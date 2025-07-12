@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "productId": "1jbIjInE7p7ZGEypuCwF",
+      "quantity": 1
+    }
+  ],
+  "shippingAddress": {
+    "firstName": "Test",
+    "lastName": "User",
+    "address": "123 Test St",
+    "city": "Testville",
+    "pincode": "123456",
+    "phone": "1234567890"
+  }
+}
+

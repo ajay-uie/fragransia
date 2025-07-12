@@ -1,0 +1,13 @@
+{
+  "name": "Test Product",
+  "description": "A product for testing purposes.",
+  "price": 100,
+  "category": "Test",
+  "inventory": 10,
+  "imageUrl": "https://example.com/test-product.jpg",
+  "isActive": true,
+  "isFeatured": false,
+  "brand": "Test Brand",
+  "images": ["https://example.com/test-product-image1.jpg"]
+}
+

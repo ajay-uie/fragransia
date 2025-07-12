@@ -1,0 +1,134 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             request.auth.token.role == 'admin';
+    }
+    
+    function isStaff() {
+      return isAuthenticated() && 
+             request.auth.token.role in ['admin', 'staff'];
+    }
+    
+    function isValidImageFile() {
+      return request.resource.contentType.matches('image/.*') &&
+             request.resource.size < 10 * 1024 * 1024; // 10MB limit
+    }
+    
+    function isValidDocumentFile() {
+      return request.resource.contentType in ['application/pdf', 'text/plain'] &&
+             request.resource.size < 5 * 1024 * 1024; // 5MB limit
+    }
+    
+    // Product images - staff can upload, everyone can read
+    match /products/{productId}/{allPaths=**} {
+      allow read: if true; // Public read access
+      allow write: if isStaff() && isValidImageFile();
+      allow delete: if isStaff();
+    }
+    
+    // Category images - staff can upload, everyone can read
+    match /categories/{categoryId}/{allPaths=**} {
+      allow read: if true; // Public read access
+      allow write: if isStaff() && isValidImageFile();
+      allow delete: if isStaff();
+    }
+    
+    // Banner images - staff can upload, everyone can read
+    match /banners/{bannerId}/{allPaths=**} {
+      allow read: if true; // Public read access
+      allow write: if isStaff() && isValidImageFile();
+      allow delete: if isStaff();
+    }
+    
+    // Blog post images - staff can upload, everyone can read
+    match /blog/{postId}/{allPaths=**} {
+      allow read: if true; // Public read access
+      allow write: if isStaff() && isValidImageFile();
+      allow delete: if isStaff();
+    }
+    
+    // User profile images - users can upload their own, everyone can read
+    match /users/{userId}/profile/{allPaths=**} {
+      allow read: if true; // Public read access
+      allow write: if isOwner(userId) && isValidImageFile();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+    
+    // User documents (invoices, receipts) - users can read their own, staff can read all
+    match /users/{userId}/documents/{allPaths=**} {
+      allow read: if isOwner(userId) || isStaff();
+      allow write: if isStaff() && isValidDocumentFile();
+      allow delete: if isAdmin();
+    }
+    
+    // Order documents (invoices, shipping labels) - users can read their own, staff can read all
+    match /orders/{orderId}/documents/{allPaths=**} {
+      allow read: if isStaff(); // Staff can read all order documents
+      allow write: if isStaff() && isValidDocumentFile();
+      allow delete: if isAdmin();
+    }
+    
+    // Temporary uploads - authenticated users can upload, auto-delete after 24 hours
+    match /temp/{userId}/{allPaths=**} {
+      allow read, write: if isOwner(userId) && 
+                           (isValidImageFile() || isValidDocumentFile());
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+    
+    // System assets (logos, icons, etc.) - staff can upload, everyone can read
+    match /assets/{allPaths=**} {
+      allow read: if true; // Public read access
+      allow write: if isStaff() && isValidImageFile();
+      allow delete: if isAdmin();
+    }
+    
+    // Backup files - admin only
+    match /backups/{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Analytics exports - staff only
+    match /exports/{allPaths=**} {
+      allow read, write: if isStaff();
+      allow delete: if isAdmin();
+    }
+    
+    // Email templates and assets - staff can manage
+    match /email-templates/{allPaths=**} {
+      allow read: if isStaff();
+      allow write: if isStaff() && 
+                    (isValidImageFile() || 
+                     request.resource.contentType == 'text/html' ||
+                     request.resource.contentType == 'text/plain');
+      allow delete: if isAdmin();
+    }
+    
+    // WhatsApp media - staff can upload for customer support
+    match /whatsapp/{allPaths=**} {
+      allow read: if isStaff();
+      allow write: if isStaff() && 
+                    (isValidImageFile() || 
+                     request.resource.contentType.matches('video/.*') ||
+                     request.resource.contentType.matches('audio/.*')) &&
+                    request.resource.size < 16 * 1024 * 1024; // 16MB limit for media
+      allow delete: if isStaff();
+    }
+    
+    // Default deny rule for any other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
